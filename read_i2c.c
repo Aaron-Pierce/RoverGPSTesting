@@ -81,6 +81,7 @@ int main()
 
     char csum = '0';
     for(int i = 0; i < read; i++){
+        if(output[i] == 0xff) continue;
         if(output[i] == '$'){
             csum = '0';
         }else if(output[i] == '*'){
