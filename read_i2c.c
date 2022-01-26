@@ -69,7 +69,7 @@ int main()
     int read = 0;
     if (first_read != 0xff)
     {
-        while (read < num_to_read)
+        while (read <= num_to_read)
         {
             unsigned char buf[33];
             memset(buf, '\0', 33);
