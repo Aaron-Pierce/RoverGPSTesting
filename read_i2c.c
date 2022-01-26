@@ -4,7 +4,10 @@
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
+
+#define MAX_MSG_LEN 200
 
 /*
 
@@ -46,11 +49,11 @@ int main()
         exit(1);
     }
 
-    u_int8_t read_addr = 0xff;
-    u_int8_t num_bytes_available_lowbyte_addr = 0xfd;
-    u_int8_t num_bytes_available_highbyte_addr = 0xfe;
-    int result = i2c_smbus_read_byte_data(file, read_addr);
+    unsigned read_addr = 0xff;
+    unsigned char num_bytes_available_lowbyte_addr = 0xfe;
+    unsigned char num_bytes_available_highbyte_addr = 0xfd;
 
+    // int result = i2c_smbus_read_byte_data(file, read_addr);
 
     // find how many bytes we have to read
     int low_byte = i2c_smbus_read_byte_data(file, num_bytes_available_lowbyte_addr);
@@ -58,15 +61,82 @@ int main()
     int num_to_read = low_byte + (high_byte << 8);
     printf("%i bytes available \n", num_to_read);
 
+    char output[num_to_read+1];
+    memset(output, '\0', num_to_read+1);
 
-    for(int i = 0; i < num_to_read - 1; i++){
-        int b_read = i2c_smbus_read_byte_data(file, read_addr);
-        // printf("%x ", b_read);
+    char first_read = i2c_smbus_read_byte_data(file, read_addr);
+
+    int read = 0;
+    if (first_read != 0xff)
+    {
+        while (read < num_to_read)
+        {
+            unsigned char buf[33];
+            memset(buf, '\0', 33);
+            i2c_smbus_read_i2c_block_data(file, read_addr, 32, buf);
+            strncpy(output+read, buf, 32);
+            read += 32;
+        }
     }
 
-    printf("completed read\n");
+    char csum = '0';
+    for(int i = 0; i < read; i++){
+        if(output[i] == '$'){
+            csum = '0';
+        }else if(output[i] == '*'){
+            printf("(csum: %x)", csum);
+        }else{
+            if(csum == '0') csum = output[i];
+            else csum ^= output[i];
+        }
+        printf("%c", output[i]);
+    }
 
-    
+    // if (first_read == 0xff)
+    // {
+    //     printf("No data awaiting\n");
+    //     // return;
+    // }
+    // else
+    // {
+    //     char message[MAX_MSG_LEN];
+    //     message[0] = first_read;
+    //     size_t message_length = 1;
+    //     for (int i = 0; i < num_to_read; i++)
+    //     {
+    //         char b_read = i2c_smbus_read_byte_data(file, read_addr);
 
+    //         if (b_read == '\r')
+    //         {
+    //             continue;
+    //         }
+    //         else if (b_read == '\n')
+    //         {
+    //             printf("%s\n\t", message);
+    //             char csum = message[1];
+    //             printf("%c", message[1]);
+    //             for(int i = 2; i < message_length - 2; i++){
+    //                 if(message[i] == '*') break;
+    //                 printf("%c", message[i]);
+    //                 csum = csum ^ message[i];
+    //             }
+    //             printf("csum: (%x)\n", csum);
+    //             message_length = 0;
+    //             memset(message, '\0', MAX_MSG_LEN);
+    //         }
+    //         else
+    //         {
+    //             message[message_length] = b_read;
+    //             message_length++;
+    //         }
+    //     }
+    //     printf("\n");
 
+    //     printf("completed read\n");
+
+    //     int extra_byte = i2c_smbus_read_byte_data(file, read_addr);
+    //     printf(" one more byte is %x \n", extra_byte);
+    // }
+
+    // return 0;
 }
